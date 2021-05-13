@@ -11,26 +11,45 @@
  * @since   2020-05-30
  */
 
+import org.json.simple.JSONObject;
+
 import javax.swing.*;
 import javax.swing.border.Border;
 import javax.swing.plaf.basic.BasicOptionPaneUI;
+import javax.swing.text.*;
+import javax.swing.JDesktopPane;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Locale;
+import java.nio.channels.Channel;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 
-public class WhiteBoardGUI extends JFrame {
+import java.awt.Container;
+
+
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+
+
+
+
+public class WhiteBoardGUI<flowLayout, frame> extends JFrame {
 
     private ObjectInputStream input;
     private ObjectOutputStream output;
     private static String username;
     private static String role;
-
-    private Socket client;
+    private static String portNum;
+    private JTextArea jta1;
+    private JTextArea jta2;
     private JButton tools[];
 
     private String toolNames[] = {
@@ -58,42 +77,51 @@ public class WhiteBoardGUI extends JFrame {
 
     private int width = 800, height = 700;
     private DrawPanel drawPanel;
+    private Panel panel = new Panel();
+    private JPanel mainpanel = new JPanel();        /*主要的panel，上层放置连接区，下层放置消息区，中间是消息面板，左边是系统消息，右边是当前room的用户列表*/
+
     DataStream drawRecord = new DataStream();
     DrawService[] draws = new DrawService[drawRecord.maxStorage];
     private String drawingTool = "pencil";
     private String drawingColor = "#0000ff";
     DrawService newDraw = null;
-    ObjectOutputStream ObjOut;
-    ObjectInputStream ObjIn;
+
     DataOutputStream os;
     DataInputStream is;
 
+    Socket client;
+    ServerSocket ss;
+
     DefaultListModel model = new DefaultListModel();
-    DefaultListModel model1 = new DefaultListModel();
     private JPanel userListGUI = new JPanel();
     private JList userListOnBoard = new JList();
-    private JButton kickOut = new JButton("kick");
+    private static JButton kickOut;
+
+
+    private static  JButton chat;
     String[] color={"#00FFFF","#808080","#000080","#C0C0C0","#000000","#008000","#808000","#008080","#0000FF","#00FF00","#800080","#A4A832","#FF00FF","#800000","#FF0000","#FFFF00"};
     JButton[] colorButton = new JButton[color.length];
 
     private JPanel colorGUI = new JPanel();
 
-
-
-
     private ArrayList<String> curUserList = new ArrayList<>();
 
-    public WhiteBoardGUI(String username, String role, ArrayList<String> userList) throws IOException, ClassNotFoundException {
+
+
+    public WhiteBoardGUI(String username, String role, ArrayList<String> userList, ServerSocket serverSocket) throws IOException, ClassNotFoundException {
         super("Shared Whiteboard for " + username);
         this.username = username;
         this.role = role;
         curUserList = userList;
         initialise();
+        this.ss = serverSocket;
 
     }
 
+
     public WhiteBoardGUI(String username, String role, Socket client, ArrayList<String> userList) throws IOException, ClassNotFoundException {
         super("Shared Whiteboard for " + username);
+        System.out.println("OS created\n");
         os = new DataOutputStream(new BufferedOutputStream(client.getOutputStream()));
         is = new DataInputStream(new BufferedInputStream(client.getInputStream()));
         this.username = username;
@@ -204,12 +232,212 @@ public class WhiteBoardGUI extends JFrame {
         }
         userListOnBoard = new JList(model);
 
+
+
+
+
+
+
+        // chat GUI
+        kickOut= new JButton("kick");
+        chat  = new JButton("Chat");
+
+        GridLayout grid=new GridLayout(2,1);
+        panel.setLayout(grid);
+        kickOut.setPreferredSize(new Dimension(100,30));
+        panel.add(kickOut);
+        chat.setPreferredSize(new Dimension(100,30));
+        panel.add(chat);
+        {/*
+        mainpanel.setLayout(grid1);
+
+        JPanel headpanel = new JPanel();    /*上层panel，用于放置连接区域相关的组件
+        JPanel footpanel = new JPanel();    /*下层panel，用于放置发送信息区域的组件
+        JPanel centerpanel = new JPanel();    /*中间panel，用于放置聊天信息
+        JPanel leftpanel = new JPanel();    /*左边panel，用于放置房间列表和加入按钮
+        JPanel rightpanel = new JPanel();   /*右边panel，用于放置房间内人的列表
+
+
+        /*最上层的布局，分中间，东南西北五个部分
+
+        BorderLayout layout = new BorderLayout();
+        /*格子布局，主要用来设置西、东、南三个部分的布局
+        GridBagLayout gridBagLayout = new GridBagLayout();
+        /*主要设置北部的布局
+        FlowLayout flowLayout = new FlowLayout();
+
+        /*设置各个部分的panel的布局和大小
+        headpanel.setLayout(flowLayout);
+        //footpanel.setLayout(flowLayout);
+        leftpanel.setLayout(gridBagLayout);
+        centerpanel.setLayout(gridBagLayout);
+        rightpanel.setLayout(gridBagLayout);
+
+        //设置面板大小
+        leftpanel.setPreferredSize(new Dimension(350, 0));
+        rightpanel.setPreferredSize(new Dimension(155, 0));
+       // footpanel.setPreferredSize(new Dimension(0, 40));
+
+
+        //头部布局
+       JTextField port_textfield = new JTextField("8888");
+       JTextField name_textfield = new JTextField("匿名");
+        port_textfield.setPreferredSize(new Dimension(70, 25));
+        name_textfield.setPreferredSize(new Dimension(150, 25));
+
+        JLabel port_label = new JLabel("端口号:");
+        JLabel name_label = new JLabel("Manager:");
+
+       JButton head_connect = new JButton("Start");
+       JButton head_exit = new JButton("Close");
+
+        headpanel.add(port_label);
+        headpanel.add(port_textfield);
+        headpanel.add(name_label);
+        headpanel.add(name_textfield);
+        headpanel.add(head_connect);
+        headpanel.add(head_exit);
+
+
+        //底部布局
+
+
+
+
+        // foot_userClear.setPreferredSize(new Dimension(148, 0));
+
+
+
+
+
+        //左边布局
+        JLabel sysMsg_label = new JLabel("System Log:");
+        leftpanel.add(sysMsg_label);
+       JTextPane sysMsgArea = new JTextPane();
+        sysMsgArea.setEditable(false);
+       JScrollPane sysTextScrollPane = new JScrollPane();
+       sysTextScrollPane.setPreferredSize(new Dimension(200,100));
+
+        sysTextScrollPane.setViewportView(sysMsgArea);
+       JScrollBar sysVertical = new JScrollBar(JScrollBar.VERTICAL);
+        sysVertical.setAutoscrolls(true);
+        sysTextScrollPane.setVerticalScrollBar(sysVertical);
+        leftpanel.add(sysTextScrollPane);
+
+        JTextArea sysText_field = new JTextArea();
+        sysText_field.setPreferredSize(new Dimension(100, 30));
+        footpanel.add(sysText_field);
+        JButton foot_sysSend = new JButton("发送系统消息");
+        footpanel.add(foot_sysSend);
+        //foot_sysSend.setPreferredSize(new Dimension(110, 0));
+        leftpanel.add(footpanel);
+
+
+
+
+
+        //中间布局
+        JLabel userMsg_label = new JLabel("世界聊天:");
+        centerpanel.add(userMsg_label);
+        JTextPane userMsgArea = new JTextPane();
+        userMsgArea.setEditable(false);
+        userMsgArea.setPreferredSize(new Dimension(100,100));
+        JScrollPane userTextScrollPane = new JScrollPane();
+        userTextScrollPane.setViewportView(userMsgArea);
+        JScrollBar userVertical = new JScrollBar(JScrollBar.VERTICAL);
+        userVertical.setAutoscrolls(true);
+        userTextScrollPane.setVerticalScrollBar(userVertical);
+        centerpanel.add(userTextScrollPane);
+
+        JPanel footpanelcenter = new JPanel();
+        JTextArea text_field = new JTextArea();
+        text_field.setPreferredSize(new Dimension(100,30));
+        footpanelcenter.add(text_field);
+        JButton foot_send = new JButton("发送聊天信息");
+        footpanelcenter.add(foot_send);
+        centerpanel.add(footpanelcenter);
+
+        //右边布局
+
+        JLabel users_label = new JLabel("当前连接用户:0");
+        rightpanel.add(users_label);
+        JButton privateChat_button = new JButton("Private Chat");
+        rightpanel.add(privateChat_button );
+        JButton kick_button = new JButton("Kick Out");
+        rightpanel.add(kick_button);
+        JButton foot_userClear = new JButton("清空聊天消息");
+        rightpanel.add(foot_userClear);
+
+
+        mainpanel.add(leftpanel);
+        mainpanel.add(centerpanel);
+        mainpanel.add(rightpanel);
+        */}
+
+
+
+
+
+
+
+
+        {/*
+
+        JPanel jpLeft=new JPanel();
+
+        JLabel jlb1=new JLabel("Message Window");
+        jpLeft.add(jlb1);
+        //接收消息框
+        jta1=new JTextArea(10,30);
+        jta1.setLineWrap(true);//设置文本框内容自动换行
+        jta1.setWrapStyleWord(true);//设置文本框内容在单词结束处换行
+        jta1.append("Start Chat:");//向消息框内添加文本
+        jta1.setEditable(false);//聊天框内容不可修改
+
+        //添加滚动条
+        JScrollPane jsp1=new JScrollPane(jta1,JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        jpLeft.add(jsp1);
+
+
+
+        JLabel jlb2=new JLabel("Input Window");
+        jpLeft.add(jlb2);
+
+
+        //发送消息框
+        jta2=new JTextArea(10,30);
+        jta2.setLineWrap(true);//设置消息框内的文本每满一行就自动换行
+        jta2.setWrapStyleWord(true);//设置消息框内文本按单词分隔换行
+
+        //添加滚动条
+        JScrollPane jsp2=new JScrollPane(jta2,JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        jpLeft.add(jsp2);
+
+        //发送和取消按钮
+
+        JButton jb1=new JButton("Send");
+        jpLeft.add(jb1);
+        JButton jb2=new JButton("Cancel");
+        jpLeft.add(jb2);
+        */}
+
+        // draw GUI
+        //绘画界面
+
+
+
+
+
+
+
         //create color list GUI
 
         for(int j = 0; j < colorButton.length; j++) {
             Color colorType =  Color.decode(color[j]);
             colorButton[j] = new JButton();
             colorButton[j].setBackground(colorType);
+            colorButton[j].setBorderPainted(false);
+            colorButton[j].setOpaque(true);
             colorButton[j].setPreferredSize(new Dimension(30,30));
             colorGUI.add(colorButton[j]);
             String[] colorArray={"#00FFFF","#808080","#000080","#C0C0C0","#000000","#008000","#808000","#008080","#0000FF","#00FF00","#800080","#A4A832","#FF00FF","#800000","#FF0000","#FFFF00"};
@@ -237,8 +465,9 @@ public class WhiteBoardGUI extends JFrame {
         userListGUI.setBorder(border);
         userListGUI.add(userListOnBoard, BorderLayout.CENTER);
 
+
         if(role.equals("manager")) {
-            userListGUI.add(kickOut, BorderLayout.SOUTH);
+            userListGUI.add(panel,BorderLayout.SOUTH);
             kickOut.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
@@ -252,9 +481,30 @@ public class WhiteBoardGUI extends JFrame {
                     }
                 }
             });
+            chat.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    System.out.println("Server Clicked\n");
+                    new chatServer().init(username);
+                }
+            });
+
+        }
+        else {
+            userListGUI.add(chat,BorderLayout.SOUTH);
+            chat.addActionListener(new ActionListener() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    new chatClient().init(username);
+                }
+            });
+
         }
         userListGUI.setPreferredSize(new Dimension(100, 700));
-colorGUI.setPreferredSize(new Dimension(100,700));
+        colorGUI.setPreferredSize(new Dimension(100,700));
+
+
+
         c.add(buttonPanel, BorderLayout.NORTH);
         c.add(colorGUI,BorderLayout.WEST);
         c.add(drawPanel, BorderLayout.CENTER);
@@ -264,11 +514,12 @@ colorGUI.setPreferredSize(new Dimension(100,700));
         createDraw();
         setSize(width, height);
 
-        setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         setVisible(true);
 
 
     }
+
+
 
     class DrawPanel extends JPanel {
 
@@ -284,10 +535,6 @@ colorGUI.setPreferredSize(new Dimension(100,700));
         public void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2d = (Graphics2D) g;
-
-            {/* Color colorType2 =  new Color(Integer.parseInt(drawingColor, 16));
-            System.out.println("check:"+colorType2);*/}
-            // g2d.setColor(Color.decode(drawingColor));
             int j = 0;
             while (j <= drawRecord.curIndex) {
                 draw(g2d, draws[j]);
@@ -309,7 +556,6 @@ colorGUI.setPreferredSize(new Dimension(100,700));
                     ", " + e.getY() + ")");
             draws[drawRecord.curIndex].x1 = draws[drawRecord.curIndex].x2 = e.getX();
             draws[drawRecord.curIndex].y1 = draws[drawRecord.curIndex].y2 = e.getY();
-            //System.out.println(new Color(Integer.parseInt(drawingColor, 16)));
             draws[drawRecord.curIndex].color = Color.decode(drawingColor);
 
             if(drawingTool.equals("pencil")) {
@@ -438,17 +684,28 @@ colorGUI.setPreferredSize(new Dimension(100,700));
             try {
                 String received = is.readUTF();
                 System.out.println("!!"+received);
+                JSONParser parser = new JSONParser();
+                JSONObject command = (JSONObject)parser.parse(input.readUTF());
+                String commandMsg = command.get("command").toString();
+                System.out.println("COMMAND RECEIVED: " + command.toJSONString());
+                Integer result = parseCommand(command);
+                JSONObject results = new JSONObject();
+                results.put("result", result);
+                output.writeUTF(results.toJSONString());
+
+
+                JSONObject object = JSON.parseObject;
                 String[] data = received.split(",");
-                if (data[0].equals("newuser")) {
+                if (commandMsg.equals("newuser")) {
                     addNewUser(data[1]);
-                } else if (data[0].equals("userleave")) {
+                } else if (commandMsg.equals("userleave")) {
                     if (data[1].equals(username)) {
                         JOptionPane.showMessageDialog(null, "Oops! You have been kicked out by the white board owner. Please contact the owner or restart the white board.");
                         System.exit(0);
                     } else {
                         removeUser(data[1]);
                     }
-                } else if (data[0].equals("graphics")) {
+                } else if (commandMsg.equals("graphics")) {
                     // redraw
                     for (int i = 1; i < data.length - 1; i++) {
                         String[] drawData = data[i].split("\\|");
@@ -465,9 +722,9 @@ colorGUI.setPreferredSize(new Dimension(100,700));
                         createDrawForClient(newDraw);
                     }
 
-                } else if (data[0].equals("cleanup")) {
+                } else if (commandMsg.equals("cleanup")) {
                     cleanBoard();
-                } else if (data[0].equals("load")) {
+                } else if (commandMsg.equals("load")) {
                     cleanBoard();
                     requestForGraphics();
                 } else {
@@ -487,7 +744,7 @@ colorGUI.setPreferredSize(new Dimension(100,700));
                     }
                 }
 
-            } catch (EOFException | SocketException e) {
+            } catch (EOFException | SocketException | ParseException e) {
                 JOptionPane.showMessageDialog(null, "Server is closed by the manager. You have been removed from this whiteboard");
                 System.exit(0);
             }

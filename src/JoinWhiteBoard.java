@@ -35,8 +35,7 @@ public class JoinWhiteBoard {
     private static Socket clientSocket = null;
     private static DataInputStream is;
     private static DataOutputStream os;
-    private static ObjectInputStream objIn;
-    private static ObjectOutputStream objOut;
+
 
     public static void main(String[] args)
     {
@@ -64,7 +63,7 @@ public class JoinWhiteBoard {
             }
 
             try {
-                clientSocket = new Socket(IPAddress, port);
+                clientSocket = new Socket(IPAddress, port); // client side socket
                 is = new DataInputStream(clientSocket.getInputStream());;
                 os = new DataOutputStream(new BufferedOutputStream(clientSocket.getOutputStream()));
 

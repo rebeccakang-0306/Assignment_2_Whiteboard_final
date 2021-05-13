@@ -18,6 +18,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Locale;
 import javax.net.ServerSocketFactory;
 import javax.swing.*;
@@ -45,6 +46,7 @@ public class CreateWhiteBoard {
             IPAddress = args[0];
             port = Integer.parseInt(args[1]);
             username = args[2];
+
 
 
             if (args.length > MAX_ARGS) {
@@ -83,8 +85,10 @@ public class CreateWhiteBoard {
     public static void WhiteBoardService() throws IOException, ClassNotFoundException {
         ServerSocketFactory factory = ServerSocketFactory.getDefault();
         User.addInUserList(new User(username, null, "manager"));
-        board = new WhiteBoardGUI(username, "manager", User.UsernameList());
+        System.out.println("Before create whiteboard\n");
+        System.out.println("After create whiteboard\n");
         ServerSocket server = factory.createServerSocket(port);
+        board = new WhiteBoardGUI(username, "manager", User.UsernameList(),server);
         try
         {
 
@@ -98,10 +102,13 @@ public class CreateWhiteBoard {
                 // Start a new thread for a connection
                 Thread t = new DrawThread(client);
                 t.start();
+
             }
 
         }
         catch (IOException e)
+
+
         {
             ExceptionHandler.main(e);
         }
@@ -134,6 +141,9 @@ public class CreateWhiteBoard {
                     case "load":
                         data = "load,";
                         break;
+                    case "chat":
+                        data = "chat";
+                        break;
                 }
 
                 os.writeUTF(data);
@@ -157,7 +167,6 @@ public class CreateWhiteBoard {
             }
 
         }
-         // TODO: 2021/5/10
         os.writeUTF(String.valueOf(data));
         os.flush();
     }
@@ -181,6 +190,29 @@ public class CreateWhiteBoard {
             if (quitIndex > 0) {
                 User.removeFromUserList(quitIndex);
             }
+        }
+    }
+
+
+    public static void chat(Object user) throws IOException {
+        boolean exist = false;
+        System.out.println("start chating...");
+        String chatededUser = user.toString();
+        int quitIndex = 0;
+        for(User eachUser:User.curUserList) {
+            if (!eachUser.role.equals("manager") && eachUser.username.equals(chatededUser)) {
+                exist = true;
+                quitIndex = User.curUserList.indexOf(eachUser);
+            }
+        }
+
+        if(exist) {
+
+
+            System.out.println("connection closed for: " + chatededUser);
+            board.removeUser(chatededUser);
+            Broadcast(null, null, "leave", chatededUser);
+
         }
     }
 
